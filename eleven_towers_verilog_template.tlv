@@ -179,3 +179,5 @@
    // Declare Verilog module.
    m4_ifdef(['m5']_team_\m5_get_ago(github_id, 0)_module, ['m5_call(team_\m5_get_ago(github_id, 0)_module)'])
    m4_ifdef(['m5']_team_\m5_get_ago(github_id, 1)_module, ['m5_call(team_\m5_get_ago(github_id, 1)_module)'])
+
+// This file must not exceed 6,000 lines. The expanded NAV-TLV code must not exceed 9,000 lines.

@@ -143,3 +143,5 @@
    m5+eleven_towers_game(/top)
 \SV
    endmodule
+
+// This file must not exceed 6,000 lines. The expanded NAV-TLV code must not exceed 9,000 lines.
