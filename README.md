@@ -79,13 +79,19 @@ On the flip side, TL-Verilog introduces considerable benefits:
 - *Compatibility:* If you are on the fence, start with the TL-Verilog template and try using TL-Verilog. It is an extension of Verilog. If you have trouble, you can always write a pure Verilog component (module, macro, function, etc.) and instantiate it from your TL-Verilog code.
 - *AI*: Though less familiar with TL-Verilog, with adequate examples, and documentation (RAG data), AI agents do quite well with TL-Verilog. Before long, AI will outperform using it, so you'd be investing in your future.
 
+GitHub Copilot coded `Copilot_simple_entry.tlv` and `Copilot_simple_entry_verilog.tlv` (in this repo) to testdrive the contest. Afterward, it had the following to say:
+
+*TL-Verilog's hierarchical transaction-level abstractions made the algorithm implementation significantly more concise and readable than Verilog, requiring about 50% less code by eliminating generate blocks and verbose wire array declarations. The natural signal access patterns in both the logic and visualization code made TL-Verilog feel like the right abstraction level for this game logic, where Verilog's lower-level mechanisms added ceremony without benefit.*
+
+Perhaps it picked up on our bias :).
+
 ## Using AI
 
 You are encouraged to use AI to assist with coding. When it comes to creativity and strategy, human ingenuity will come out on top.
 
 Redwood EDA has a Makerchip VS Code extension in the works that will likely become available during the coding period. With this extension, Copilot is quite capable with TL-Verilog, and Makerchip.
 
-Prior to the release of the extension, you can connect Makerchip to an external file ("Project"::"Connect File" menu) and use any editor with an LLM assistant. You can provide coding agents with RAG data from [this repo](https://github.com/rweda/Makerchip-public/tree/main).
+Prior to the release of the extension, you can connect Makerchip to an external file ("Project"::"Connect File" menu) and use any editor with an LLM assistant. You can provide coding agents with RAG data from [this repo](https://github.com/rweda/Makerchip-public/tree/main). Copilot created `Copilot_simple_entry.tlv` and `Copilot_simple_entry_verilog.tlv` using this under-development extension.
 
 ## Tips
 

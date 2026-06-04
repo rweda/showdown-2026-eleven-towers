@@ -154,7 +154,7 @@
 \SV
    // Include the Eleven Towers framework.
    // TODO: Update to a specific SHA in rweda repo after finalizing the framework for the season.
-   m4_include_lib(['https://raw.githubusercontent.com/stevehoover/eleven-towers/main/eleven_towers_lib.tlv'])
+   m4_include_lib(['https://raw.githubusercontent.com/rweda/showdown-2026-eleven-towers/a7a75ffde289282804aae012bd1dcbef179adb78/eleven_towers_lib.tlv'])
    // Include other opponent files (based on eleven_towers_[verilog_]template.tlv) using GitHub raw URLs (similar to eleven_towers_lib.tlv, above).
    // ...
 
