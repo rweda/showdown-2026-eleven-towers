@@ -53,7 +53,7 @@ Depending on the number of participants, the tournament structure may vary. A su
 You'll construct your control logic in a copy of either:
 
 - For TL-Verilog: `showdown_template.tlv` [[open in Makerchip](https://www.makerchip.com/sandbox?code_url=https%3A%2F%2Fraw.githubusercontent.com%2Frweda%2Fshowdown-2026-eleven-towers%2Frefs%2Fheads%2Fmain%2Feleven_towers_template.tlv)]
-- For old-school SystemVerilog: `showdown_verilog_template.tlv` [[open in Makerchip](https://www.makerchip.com/sandbox?code_url=https%3A%2F%2Fraw.githubusercontent.com%2Frweda%2Fshowdown-2026-eleven-towers%2Frefs%2Fheads%2Fmain%2Feleven-towers_verilog_template.tlv)]
+- For old-school SystemVerilog: `showdown_verilog_template.tlv` [[open in Makerchip](https://www.makerchip.com/sandbox?code_url=https%3A%2F%2Fraw.githubusercontent.com%2Frweda%2Fshowdown-2026-eleven-towers%2Frefs%2Fheads%2Fmain%2Feleven_towers_verilog_template.tlv)]
 
 Comments in those files provide interface signal details. All you need is the one file in GitHub for submission. We suggest, using GitHub's green "Use this template" button from [this repository](https://github.com/rweda/showdown-2026-eleven-towers). Clone your new Showdown repository for local editing. Copy a template file into a new `.tlv` file in this repo for you work. (Alternatively, you could fork the repo and edit directly in the template file so you can easily pull future changes.)
 
@@ -89,9 +89,9 @@ Perhaps it picked up on our bias :).
 
 You are encouraged to use AI to assist with coding. When it comes to creativity and strategy, human ingenuity will come out on top.
 
-Redwood EDA has a Makerchip VS Code extension in the works that will likely become available during the coding period. With this extension, Copilot is quite capable with TL-Verilog, and Makerchip.
+Redwood EDA has a Makerchip VS Code extension in the works that will likely become available during the coding period. With this extension, Copilot is quite capable with TL-Verilog, and Makerchip. Copilot created `Copilot_simple_entry.tlv` and `Copilot_simple_entry_verilog.tlv` using this under-development extension.
 
-Prior to the release of the extension, you can connect Makerchip to an external file ("Project"::"Connect File" menu) and use any editor with an LLM assistant. You can provide coding agents with RAG data from [this repo](https://github.com/rweda/Makerchip-public/tree/main). Copilot created `Copilot_simple_entry.tlv` and `Copilot_simple_entry_verilog.tlv` using this under-development extension.
+Prior to the release of the extension, you can connect Makerchip to an external file ("Project"::"Connect File" menu) and use any editor with an LLM assistant. You can provide coding agents with RAG data from [this repo](https://github.com/rweda/Makerchip-public/tree/main).
 
 ## Tips
 
@@ -127,9 +127,9 @@ Each template (Verilog or TL-Verilog) provides an example `\viz_js` block to get
 
 ![VIZ Example](img/viz_example.png)
 
-### Battling Others
+### Playing Against Others
 
-The [Competition Template](./competition_template.tlv) can be used to set up a battle with an opponent.
+The starting `.tlv` templates choose opponents near the bottom. It provides instructions for including someone else's model (also based on the template) and selecting it as an opponent.
 
 ### Seeking Help
 
