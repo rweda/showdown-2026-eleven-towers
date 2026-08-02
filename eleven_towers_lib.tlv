@@ -21,7 +21,17 @@
    })
    
    var(num_players, 0)  // incremented as defined
-   
+
+   / Tournament/simulation knobs. Override these from the event file (before instantiating
+   / the game) to run many distinct games for scoring.
+   / rand_seed: Mixed into the dice RNG so different runs produce different dice. The default
+   /            (0) is a no-op that reproduces the original unseeded sequence.
+   var(rand_seed, 0)
+   / max_cycles: Simulation cycle cap. A game with no winner by this many cycles is a draw
+   /             ($failed). The default (400) stays under Makerchip's 600-cycle limit; The
+   /             actual event uses privileged access to extend this limit.
+   var(max_cycles, 400)
+
    / Define which TLV macro to use for this player.
    / E.g. m5_define_player(random, Joe Random)  /// to define a "Joe Random" player with predefined random behavior from m5_player_random
    fn(define_player, PlayerId, PlayerName, {
@@ -497,7 +507,10 @@
          always_ff @(posedge clk) begin
             $$rand[31:0] <= \$random;
          end
-      $value[2:0] = $rand[31:0] % 6 + 1;
+      // Mix in the tournament seed so different runs produce different dice. The
+      // multiply spreads small seed integers across all 32 bits; XOR by 0 (the
+      // default seed) is a no-op that preserves the original dice sequence.
+      $value[2:0] = ($rand[31:0] ^ (32'd2654435761 * m5_rand_seed)) % 6 + 1;
       \viz_js
          box: {width: 10, height: 10, strokeWidth: 0},
          render() {
@@ -814,8 +827,26 @@
          },
          where: {left: -40, top: 29, width: 80, height: 56, justifyX: "center", justifyY: "top"}
 
-   $passed = /winner$won;
-   $failed = *cyc_cnt > 400;
+   // -------------------------
+   // Win detection & result reporting
+
+   // Sticky win latch. The game passes one cycle after the win is first detected so
+   // that $WinnerPlayer is latched and recorded (for automated scoring) before
+   // Makerchip halts the simulation.
+   $Won <= $reset ? 1'b0 : (/winner$won || $Won);
+   // Latch the winning player's index (seat) the cycle the win is first detected.
+   // The reset value is all-ones (an invalid seat) to denote "no winner yet", so a
+   // drawn (timed-out) game is distinguishable from a player-0 win.
+   $WinnerPlayer[m5_PLAYER_INDEX_RANGE] <=
+        $reset ?
+             '1 :
+        /winner$won && ! $Won ?
+             $Player :
+        //default
+             $RETAIN;
+
+   $passed = $Won;
+   $failed = *cyc_cnt > m5_max_cycles;
 
    
    
