@@ -319,11 +319,19 @@
          *passed = $passed;
          *failed = $failed;
 
-\TLV eleven_towers_logic(/_top, _seed)
+\TLV eleven_towers_logic(/_top, _seed, _perm)
    // _seed (optional): A per-game dice seed. When non-empty (e.g. a replicated-hierarchy
    //   index like #seed in a multi-game tournament grid) it overrides the global m5_rand_seed
    //   knob for THIS game instance, so sibling instances produce distinct dice. When omitted,
    //   the global m5_rand_seed is used (unchanged single-game behavior).
+   // _perm (optional): A seating-permutation index (e.g. a replicated-hierarchy index like
+   //   #perm). When non-empty, the teams (instantiated in a single fixed order) are seated in a
+   //   per-instance TURN ORDER taken from the module-global *seat_map table, indexed
+   //   [_perm * PLAYER_CNT + seat]. This lets a tournament grid cover all seating permutations
+   //   by REPLICATION (a single game instantiation) rather than instantiating a separately
+   //   ordered game per permutation (which bloats the generated source / Nav-TLV). When omitted,
+   //   turn order is instantiation order (unchanged behavior). Enabling _perm requires the
+   //   driver to declare the *seat_map global (see the 4-team results file).
    m5_configure()
    
    $reset = *reset;
@@ -332,12 +340,25 @@
    // -------------------------
    // Game State
    
-   // Which player's turn is it?
-   $next_player[m5_PLAYER_INDEX_RANGE] =
-        $Player == m5_PLAYER_MAX ? m5_PLAYER_INDEX_HIGH'd0 :
-                                   $Player + m5_PLAYER_INDEX_HIGH'd1;
-   $Player[m5_PLAYER_INDEX_RANGE] <=
+   // Turn order & seating.
+   // $Seat is the turn position (0..PLAYER_MAX), advancing one step each completed turn.
+   // $Player is the team/player index whose turn it is. Without a permutation (_perm empty),
+   // the two track together, so play proceeds in instantiation order (player[0], player[1], ...).
+   // With a permutation index _perm, $Player advances through the per-instance turn order given
+   // by the module-global *seat_map (indexed [_perm * PLAYER_CNT + seat]).
+   $next_seat[m5_PLAYER_INDEX_RANGE] =
+        $Seat == m5_PLAYER_MAX ? m5_PLAYER_INDEX_HIGH'd0 :
+                                 $Seat + m5_PLAYER_INDEX_HIGH'd1;
+   $Seat[m5_PLAYER_INDEX_RANGE] <=
         $reset                   ? 1'b0 :
+        /active_player$turn_over ? $next_seat :
+                                   $RETAIN;
+   // Team index taking the next turn (combinational). Identity map when no permutation.
+   $next_player[m5_PLAYER_INDEX_RANGE] =
+        m5_if_eq(_perm, [''], ['$next_seat'], ['*seat_map\[_perm * m5_PLAYER_CNT + $next_seat\]']);
+   // Team index whose turn it is (state). Reset to the team seated first (seat 0).
+   $Player[m5_PLAYER_INDEX_RANGE] <=
+        $reset                   ? m5_if_eq(_perm, [''], ['m5_PLAYER_INDEX_HIGH'd0'], ['*seat_map\[_perm * m5_PLAYER_CNT\]']) :
         /active_player$turn_over ? $next_player :
                                    $RETAIN;
    
@@ -701,8 +722,8 @@
          $claim = $my_next_climb_floor == $tower_height;
          $ClimbFloor[3:0] <=
               /_top$reset              ? 4'b0 :
-              // If end turn, set floor for next player.
-              /active_player$turn_over ? /_top/player[(/_top$Player + m5_PLAYER_INDEX_HIGH'd1) % m5_PLAYER_CNT]/tower<<1$Floor :
+              // If end turn, set floor for next player (in turn order).
+              /active_player$turn_over ? /_top/player[/_top$next_player]/tower<<1$Floor :
                                          $my_next_climb_floor;
          $climbing = $ClimbFloor != $Floor;
          $next_climbing = $my_next_climb_floor != $Floor;   // (for VIZ only)
