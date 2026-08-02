@@ -319,7 +319,11 @@
          *passed = $passed;
          *failed = $failed;
 
-\TLV eleven_towers_logic(/_top)
+\TLV eleven_towers_logic(/_top, _seed)
+   // _seed (optional): A per-game dice seed. When non-empty (e.g. a replicated-hierarchy
+   //   index like #seed in a multi-game tournament grid) it overrides the global m5_rand_seed
+   //   knob for THIS game instance, so sibling instances produce distinct dice. When omitted,
+   //   the global m5_rand_seed is used (unchanged single-game behavior).
    m5_configure()
    
    $reset = *reset;
@@ -513,10 +517,12 @@
          always_ff @(posedge clk) begin
             $$rand[31:0] <= \$random;
          end
-      // Mix in the tournament seed so different runs produce different dice. The
-      // multiply spreads small seed integers across all 32 bits; XOR by 0 (the
-      // default seed) is a no-op that preserves the original dice sequence.
-      $value[2:0] = ($rand[31:0] ^ (32'd2654435761 * m5_rand_seed)) % 6 + 1;
+      // Mix in the tournament seed so different runs produce different dice. A per-game seed
+      // may be supplied via the optional _seed macro parameter (e.g. a replicated-hierarchy
+      // index like #seed); when omitted, the global m5_rand_seed knob is used. The multiply
+      // spreads small seed integers across all 32 bits; XOR by 0 (the default seed) is a
+      // no-op that preserves the original dice sequence.
+      $value[2:0] = ($rand[31:0] ^ (32'd2654435761 * (m5_if_eq(_seed, [''], ['m5_rand_seed'], ['_seed'])))) % 6 + 1;
       \viz_js
          box: {width: 10, height: 10, strokeWidth: 0},
          render() {
