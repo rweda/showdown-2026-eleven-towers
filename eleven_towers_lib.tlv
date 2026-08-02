@@ -302,7 +302,17 @@
    ///// TODO: We're using fixed indentation here. Need to update tlv_lib to use M5.
    ///m5_repeat(m5_num_players, ['m5_nl()                  m5+player_logic(/_top, m5_LoopCnt)m5_nl'])
 
+\TLV eleven_towers_globals(/_top)
+   // Module-global constants shared by all game instances. Declared once (here) so
+   // that multiple games can be instantiated (e.g. a tournament grid) without
+   // redeclaring these signals. eleven_towers_game instantiates this for the common
+   // single-game case; multi-game drivers must instantiate it exactly once.
+   \SV_plus
+      logic[3:0] *max[12:2] = {4'd2, 4'd4, 4'd6, 4'd8, 4'd10, 4'd12, 4'd10, 4'd8, 4'd6, 4'd4, 4'd2};
+      logic[23:0] *colors[0:4] = {24'h\m5_player_colors([', 24'h'])};
+
 \TLV eleven_towers_game(/_top)
+   m5+eleven_towers_globals(/_top)
    |game
       @1
          m5+eleven_towers_logic(|game)
@@ -313,10 +323,6 @@
    m5_configure()
    
    $reset = *reset;
-   
-   \SV_plus
-      logic[3:0] *max[12:2] = {4'd2, 4'd4, 4'd6, 4'd8, 4'd10, 4'd12, 4'd10, 4'd8, 4'd6, 4'd4, 4'd2};
-      logic[23:0] *colors[0:4] = {24'h\m5_player_colors([', 24'h'])};
    
    
    // -------------------------
