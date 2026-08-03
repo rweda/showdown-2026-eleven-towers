@@ -28,11 +28,10 @@
    m4_include_lib(https://raw.githubusercontent.com/JustNothingJay/JustNothing-eleven-towers/refs/heads/main/SECS_bot.tlv)
    m4_include_lib(https://raw.githubusercontent.com/Weiyet/showdown-2026-eleven-towers/refs/heads/main/eleven_towers_Weiyet.tlv)
 
-   // The Eleven Towers framework -- LOCAL working-tree copy (batch mode, seat/roster decoupling,
-   // team-consistent colors), passed to the compiler via additionalFiles and resolved by its
-   // basename next to top.tlv. Included LAST so its \TLV macros win the (non-fatal) last-definition
+   // The Eleven Towers framework -- pinned published copy (batch mode, seat/roster decoupling,
+   // team-consistent colors). Included LAST so its \TLV macros win the (non-fatal) last-definition
    // redefinition over the teams' own pinned framework copies.
-   m4_include_lib(['./eleven_towers_lib.tlv'])
+   m4_include_lib(['https://raw.githubusercontent.com/rweda/showdown-2026-eleven-towers/9c23c2081649f4b2f1b479f61a624a05bbb850d8/eleven_towers_lib.tlv'])
 
 \SV
    m5_makerchip_module
