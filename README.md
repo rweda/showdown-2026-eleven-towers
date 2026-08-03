@@ -146,3 +146,39 @@ To prevent excessively large models, source code larger than 6,000 lines or 9,00
 Your submission must be based on the latest Verilog or TL-Verilog template. Bug fixes in the templates and Showdown library may be required during the coding period. Rule changes will not be introduced lightly, but may be deemed necessary to facilitate the best experience and would be communicated in Slack. Be sure you are receiving Slack notifications.
 
 Inconsiderate behavior will not be tolerated and may result in disqualification. In the event of disputes, ambiguity, library/template bugs affecting outcomes, disqualification, etc., Redwood EDA, LLC's decisions are final and may result in loss of prize money. Details can be found in the [Showdown Terms and Conditions](https://www.redwoodeda.com/showdown-terms).
+
+<!-- ===================================================================== -->
+<!-- LOCAL / UNCOMMITTED: preliminary simulation results (do not commit).   -->
+<!-- ===================================================================== -->
+
+## Preliminary Results (local sim, 2026-08-03)
+
+Full compile/sim of the three tournament runs (`showdown_results_{2,3,4}team.tlv`, each 48 games
+over a reused 12-board grid, 4 rounds), all four enlisted teams:
+Sparks, Chronos TL, JustNothing, Wei Yet Ng.
+
+**Overall winner: Wei Yet Ng** (first in every format; tied at 2-team).
+
+### Combined (all 144 games, 720 pts)
+
+| Rank | Team | Total |
+|---|---|---|
+| 1 | **Wei Yet Ng** | **261** |
+| 2 | Sparks | 219 |
+| 3 | JustNothing | 198 |
+| 4 | Chronos TL | 42 |
+
+### Per format
+
+| Team | 2-team (3 pts/win) | 3-team (5 pts/win) | 4-team (7 pts/win) | Total |
+|---|---|---|---|---|
+| Wei Yet Ng | 42 | **100** | **119** | **261** |
+| Sparks | 42 | 65 | 112 | 219 |
+| JustNothing | 42 | 65 | 91 | 198 |
+| Chronos TL | 18 | 10 | 14 | 42 |
+| _run total_ | _144_ | _240_ | _336_ | _720_ |
+
+**Incomplete games: none.** Every run's total equals `48 × points-per-win`
+(144 = 48×3, 240 = 48×5, 336 = 48×7), so all 48 games in each run ended with a sole winner —
+zero draws / cycle-limit timeouts. (The 4-team run finished all 4 rounds by cycle 876, well under
+the 400-cycle-per-game cap.)
