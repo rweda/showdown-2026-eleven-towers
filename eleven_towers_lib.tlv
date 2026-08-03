@@ -31,6 +31,16 @@
    /             ($failed). The default (400) stays under Makerchip's 600-cycle limit; The
    /             actual event uses privileged access to extend this limit.
    var(max_cycles, 400)
+   / max_game_cycles: In BATCH mode, the per-game cycle cap (measured from each game's own
+   /                  reset, independent of the global cycle). A game not won within this many
+   /                  cycles is a draw for that board; the batch advances once every board is done.
+   var(max_game_cycles, 400)
+   / num_seats: The number of players actually SEATED in a single game (K), which may be SMALLER
+   /            than the roster (num_players -- the number of team circuits instantiated). This
+   /            lets a tournament run instantiate all N teams once and play K-of-N subsets per
+   /            game (seated via *seat_map). 0 (the default) means "use the full roster", i.e.
+   /            every instantiated team plays (unchanged single-game behavior).
+   var(num_seats, 0)
 
    / Define which TLV macro to use for this player.
    / E.g. m5_define_player(random, Joe Random)  /// to define a "Joe Random" player with predefined random behavior from m5_player_random
@@ -48,6 +58,13 @@
       })
    })
 
+   // The five base player colors (hex, no '#'), indexed by a stable "color id" (0..4).
+   // Coloring is keyed by color id -- a per-player identity the harness assigns (e.g. a
+   // team's roster index) -- rather than by seat, so a team keeps one color across contests.
+   var(player_color_list, ['d01010, d0d010, 109010, 1010d0, d06010'])
+   // The base color (hex, no '#') for a given color id (0-based).
+   macro(base_player_color, ['m5_argn(m5_calc($1 + 1), m5_eval(m5_player_color_list))'])
+
    macro(index_by_player, ['m5_get_ago($1, m5_calc(m5_PLAYER_MAX - $2))'])
 
    / Macro to get player color from render().
@@ -59,6 +76,12 @@
 
    macro(configure, [
       define_hier(PLAYER, m5_num_players)
+      / Seats per game (K -- players actually playing). Defaults to the full roster (num_players)
+      / unless the driver seats a K-of-N subset per game by setting num_seats. This defines the
+      / SEAT hierarchy (m5_SEAT_CNT / m5_SEAT_MAX / m5_SEAT_INDEX_RANGE / m5_SEAT_INDEX_HIGH), used
+      / for turn positions, while the PLAYER hierarchy stays roster-based (team indices 0..N-1).
+      var(seat_cnt, m5_if(m5_num_seats == 0, ['m5_num_players'], ['m5_num_seats']))
+      define_hier(SEAT, m5_seat_cnt)
 
       var(die_size, 7.2)
       var(die_stroke_width, 0)
@@ -81,6 +104,15 @@
       repeat(m5_PLAYER_CNT, [
          if(m5_depth_of(player_name) < m5_PLAYER_CNT, [
             var(player_name, Random Player m5_LoopCnt)
+         ])
+      ])
+
+      / Default each player's color id to its seat index when the harness hasn't assigned
+      / one. Harnesses that want team-consistent colors push a color_id per player (in seat
+      / order) parallel to github_id/player_name before instantiating the game.
+      repeat(m5_PLAYER_CNT, [
+         if(m5_depth_of(color_id) < m5_PLAYER_CNT, [
+            var(color_id, m5_LoopCnt)
          ])
       ])
 
@@ -262,7 +294,7 @@
    /player['']#player_num
       $reset = /_top$reset;
       // Game context (providing consistent access as pipesignals)
-      $num_players[2:0] = m5_PLAYER_CNT;
+      $num_players[2:0] = m5_SEAT_CNT;   // players actually seated in this game (K), not roster size
       $my_player_index[m5_PLAYER_INDEX_RANGE] = #player_num;
       $current_player[m5_PLAYER_INDEX_RANGE] = /_top$Player;
       
@@ -292,6 +324,25 @@
          /* verilator lint_restore */
       m5_var(my_github_id, m5_index_by_player(github_id, #player_num))
       m5+call(team_\m5_my_github_id, /_top, /player['']#player_num, #player_num)
+   // EXPERIMENTAL (video-only): /shield overdraws a Rect (extending beyond its box, which VIZ
+   // currently permits) on top of a contestant's custom \viz_js so it doesn't clutter
+   // multi-match grids in recordings. It is a SIBLING of /player (not a child) declared after
+   // it, so it renders ON TOP (a scope's own viz draws over its child scopes). Gated to the
+   // `seven` team for now so we can eyeball it on one player while others show through. The
+   // shield's box/where mirror the contestant's so its rect (0..100) covers the contestant.
+   // DISABLED for now: gated to a team id no contestant uses (was `seven`); restore `seven` (or
+   // wire up a knob) to re-enable.
+   m5_if_eq(m5_my_github_id, __shield_disabled__, ['/shield
+      \viz_js
+         box: {width: 40, height: 100, strokeWidth: 0},
+         render() {
+            // Rect matches the contestant's 0..100 background (plus small margin) to fully cover it.
+            return [new fabric.Rect({
+               left: -5, top: -5, width: 110, height: 110,
+               fill: "#40a070", strokeWidth: 0
+            })]
+         },
+         where: {left: 50, top: 0, width: 40, height: 100},'])
 
 \TLV define_players(/_top)
    m5_if(m5_PLAYER_CNT > 0, ['m5+player_logic(/_top, 0)'])
@@ -319,7 +370,7 @@
          *passed = $passed;
          *failed = $failed;
 
-\TLV eleven_towers_logic(/_top, _seed, _perm)
+\TLV eleven_towers_logic(/_top, _seed, _perm, _batch)
    // _seed (optional): A per-game dice seed. When non-empty (e.g. a replicated-hierarchy
    //   index like #seed in a multi-game tournament grid) it overrides the global m5_rand_seed
    //   knob for THIS game instance, so sibling instances produce distinct dice. When omitted,
@@ -327,15 +378,34 @@
    // _perm (optional): A seating-permutation index (e.g. a replicated-hierarchy index like
    //   #perm). When non-empty, the teams (instantiated in a single fixed order) are seated in a
    //   per-instance TURN ORDER taken from the module-global *seat_map table, indexed
-   //   [_perm * PLAYER_CNT + seat]. This lets a tournament grid cover all seating permutations
+   //   [_perm * SEAT_CNT + seat] (SEAT_CNT = players seated per game, possibly a subset of the
+   //   instantiated roster). This lets a tournament grid cover all seating permutations
    //   by REPLICATION (a single game instantiation) rather than instantiating a separately
    //   ordered game per permutation (which bloats the generated source / Nav-TLV). When omitted,
    //   turn order is instantiation order (unchanged behavior). Enabling _perm requires the
    //   driver to declare the *seat_map global (see the 4-team results file).
    m5_configure()
    
-   $reset = *reset;
+   // Reset. Normally the Makerchip startup reset (*reset), so a game runs once. In BATCH mode
+   // (_batch non-empty) the reset is a driver-supplied global (*batch_reset) pulsed at the start
+   // of every batch, so the same board hardware plays a sequence of games (one per batch).
+   $reset = m5_if_eq(_batch, [''], ['*reset'], ['*batch_reset']);
    
+   // A finished game (won or timed out) FREEZES: all game state below holds so a decided board
+   // stops visibly playing -- and no later turn can advance and overwrite/redisplay the winner --
+   // until the batch controller resets it for the next game. This MUST engage the same cycle the
+   // win is first detected (/winner$won, combinational). Using the registered $Done instead lags
+   // by two cycles, during which a win that coincides with the winner's turn end lets the seat
+   // advance to the next player, who then keeps climbing (frozen dice) and gets shown as winner.
+   // $Won keeps the freeze latched after the win cycle; $timed_out/$Done cover draws (batch).
+   $frozen = m5_if_eq(_batch, [''], ['/winner$won || $Won'], ['/winner$won || $Won || $timed_out || $Done']);
+   
+   m5_if_eq(_batch, [''], [''], ['// Batch bookkeeping: a per-board game-cycle counter (reset each game) bounds each game
+   // independently of the global cycle, and $Done latches when this board current game has
+   // finished (won or timed out) so the batch controller can tell when all boards are ready to
+   // advance together.
+   $GameCyc[15:0] <= $reset ? 16'b0 : $GameCyc + 16'b1;
+   $timed_out = $GameCyc > m5_max_game_cycles;'])
    
    // -------------------------
    // Game State
@@ -346,19 +416,21 @@
    // the two track together, so play proceeds in instantiation order (player[0], player[1], ...).
    // With a permutation index _perm, $Player advances through the per-instance turn order given
    // by the module-global *seat_map (indexed [_perm * PLAYER_CNT + seat]).
-   $next_seat[m5_PLAYER_INDEX_RANGE] =
-        $Seat == m5_PLAYER_MAX ? m5_PLAYER_INDEX_HIGH'd0 :
-                                 $Seat + m5_PLAYER_INDEX_HIGH'd1;
-   $Seat[m5_PLAYER_INDEX_RANGE] <=
+   $next_seat[m5_SEAT_INDEX_RANGE] =
+        $Seat == m5_SEAT_MAX ? m5_SEAT_INDEX_HIGH'd0 :
+                               $Seat + m5_SEAT_INDEX_HIGH'd1;
+   $Seat[m5_SEAT_INDEX_RANGE] <=
         $reset                   ? 1'b0 :
+        $frozen                  ? $RETAIN :
         /active_player$turn_over ? $next_seat :
                                    $RETAIN;
    // Team index taking the next turn (combinational). Identity map when no permutation.
    $next_player[m5_PLAYER_INDEX_RANGE] =
-        m5_if_eq(_perm, [''], ['$next_seat'], ['*seat_map\[_perm * m5_PLAYER_CNT + $next_seat\]']);
+        m5_if_eq(_perm, [''], ['$next_seat'], ['*seat_map\[_perm * m5_SEAT_CNT + $next_seat\]']);
    // Team index whose turn it is (state). Reset to the team seated first (seat 0).
    $Player[m5_PLAYER_INDEX_RANGE] <=
-        $reset                   ? m5_if_eq(_perm, [''], ['m5_PLAYER_INDEX_HIGH'd0'], ['*seat_map\[_perm * m5_PLAYER_CNT\]']) :
+        $reset                   ? m5_if_eq(_perm, [''], ['m5_PLAYER_INDEX_HIGH'd0'], ['*seat_map\[_perm * m5_SEAT_CNT\]']) :
+        $frozen                  ? $RETAIN :
         /active_player$turn_over ? $next_player :
                                    $RETAIN;
    
@@ -367,6 +439,7 @@
       
       // Track rolls this turn
       $RollCnt[7:0] <= $reset ? 8'b0 :
+                       /_top$frozen ? $RETAIN :
                        $turn_over ? 8'b0 :
                                     $RollCnt + 8'b1;
       
@@ -510,10 +583,12 @@
          // Track height at turn start (for progress assessment)
          $TurnStartFloor[3:0] <=
               /_top$reset ? 4'b0 :
+              /_top$frozen ? $RETAIN :
               /_top/active_player$turn_over && /_top$next_player == #player ? $Floor :
                             $RETAIN;
          $Floor[3:0] <=
               /_top$reset ? 4'b0 :
+              /_top$frozen ? $RETAIN :
               ! /_top/active_player$end_turn || /_top/active_player$bust
                           ? $RETAIN :
               // successful end-of-turn
@@ -534,16 +609,32 @@
    
    // Four rolled dice values.
    /die[3:0]
+      m5_if_eq(_batch, [''], ['// Freeze the free-running dice once the game is decided, so a finished board shows a
+      // completely static frame (no re-rolling dice or flickering claim/turn state) -- matching
+      // the frozen game state below. (The BATCH LFSR path applies the same $frozen gating.)
+      $hold_dice = /_top$frozen;
       \SV_plus
          always_ff @(posedge clk) begin
-            $$rand[31:0] <= \$random;
+            if (! $hold_dice)
+               $$rand[31:0] <= \$random;
          end
       // Mix in the tournament seed so different runs produce different dice. A per-game seed
       // may be supplied via the optional _seed macro parameter (e.g. a replicated-hierarchy
       // index like #seed); when omitted, the global m5_rand_seed knob is used. The multiply
       // spreads small seed integers across all 32 bits; XOR by 0 (the default seed) is a
       // no-op that preserves the original dice sequence.
-      $value[2:0] = ($rand[31:0] ^ (32'd2654435761 * (m5_if_eq(_seed, [''], ['m5_rand_seed'], ['_seed'])))) % 6 + 1;
+      $value[2:0] = ($rand[31:0] ^ (32'd2654435761 * (m5_if_eq(_seed, [''], ['m5_rand_seed'], ['_seed'])))) % 6 + 1;'], ['// BATCH mode: a deterministic, RESETTABLE xorshift32 LFSR (pure TLV), reseeded at each
+      // game reset from the per-board runtime seed (/_top$game_seed) mixed with the die index,
+      // so the dice are reproducible regardless of when the game runs within a batch. (The
+      // default path above uses the free-running Verilog $random instead.)
+      // Nonzero seed-derived init (xorshift must never be seeded to 0); the golden-ratio odd
+      // constant per die index decorrelates the four dice.
+      $seed_init[31:0] = 32'h1 + (/_top$game_seed ^ (#die * 32'h9e3779b1));
+      $x1[31:0] = $Lfsr ^ ($Lfsr << 13);
+      $x2[31:0] = $x1 ^ ($x1 >> 17);
+      $x3[31:0] = $x2 ^ ($x2 << 5);
+      $Lfsr[31:0] <= /_top$reset ? $seed_init : /_top$frozen ? $RETAIN : $x3;
+      $value[2:0] = $Lfsr[31:0] % 6 + 1;'])
       \viz_js
          box: {width: 10, height: 10, strokeWidth: 0},
          render() {
@@ -577,10 +668,13 @@
                ]$value;
 
    \viz_js
-      box: {left: -50, top: 0, width: 100, height: 100, fill: "#40a070", strokeWidth: 0},
+      box: {left: -42.5, top: 0, width: 85, height: 100, fill: "#40a070", strokeWidth: 0},
       init() {
-         // Player colors.
-         this.player_color = ["#m5_player_colors(['", "#'])"]
+         // Player colors, indexed by seat. Each seat's color is its player's color id
+         // (assigned by the harness, defaulting to the seat index), so a team keeps one
+         // color regardless of where it sits in a given game. Unfilled seats (index >=
+         // player count) resolve to a harmless in-range color that is never rendered.
+         this.player_color = ["#m5_base_player_color(m5_index_by_player(color_id, 0))", "#m5_base_player_color(m5_index_by_player(color_id, 1))", "#m5_base_player_color(m5_index_by_player(color_id, 2))", "#m5_base_player_color(m5_index_by_player(color_id, 3))", "#m5_base_player_color(m5_index_by_player(color_id, 4))"]
          
          // Create a die.
          this.die = (player, pip_color, value, left, top, scale) => {
@@ -722,6 +816,7 @@
          $claim = $my_next_climb_floor == $tower_height;
          $ClimbFloor[3:0] <=
               /_top$reset              ? 4'b0 :
+              /_top$frozen             ? $RETAIN :
               // If end turn, set floor for next player (in turn order).
               /active_player$turn_over ? /_top/player[/_top$next_player]/tower<<1$Floor :
                                          $my_next_climb_floor;
@@ -803,7 +898,6 @@
    /winner
       // Determine which player won
       $won = /_top/active_player$win;
-      $winning_color[23:0] = /_top/active_player$color;
       
       \viz_js
          box: {left: -105, top: 0, width: 210, height: 170, strokeWidth: 0},
@@ -811,12 +905,12 @@
             let won = '$won'.asBool()
             
             if (won) {
-               // Convert color from 24-bit hex to CSS format
-               let color24 = '$winning_color'.asInt()
-               let r = (color24 >> 16) & 0xFF
-               let g = (color24 >> 8) & 0xFF
-               let b = color24 & 0xFF
-               let playerColor = `rgb(${r}, ${g}, ${b})`
+               // Winner backdrop uses the winning seat's team color (from the game's
+               // color-id-keyed palette) so it matches that team's dice/pieces. Read the
+               // seat index into a local first: a bracket immediately followed by a quote
+               // would be misread as an M5 quote delimiter.
+               let winSeat = '/_top$Player'.asInt()
+               let playerColor = this.getScope("game").context.player_color[winSeat]
                
                // Create celebration objects in a group with transparency
                return [new fabric.Group([
@@ -878,8 +972,14 @@
         //default
              $RETAIN;
 
+   m5_if_eq(_batch, [''], ['$passed = $Won;
+   $failed = *cyc_cnt > m5_max_cycles;'], ['// This board current game is done once it has been won or has timed out. It stays
+   // latched (the board keeps free-running harmlessly) until the batch controller resets
+   // all boards together for the next batch. $WinnerPlayer above is latched at the first
+   // win, so the extra free-running after $Done does not disturb the recorded result.
+   $Done <= $reset ? 1'b0 : ($Won || $timed_out || $Done);
    $passed = $Won;
-   $failed = *cyc_cnt > m5_max_cycles;
+   $failed = $timed_out;'])
 
    
    
