@@ -27,7 +27,7 @@
    m4_include_lib(https://raw.githubusercontent.com/Weiyet/showdown-2026-eleven-towers/refs/heads/main/eleven_towers_Weiyet.tlv)
 
    // Include the Eleven Towers framework.
-   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2026-eleven-towers/a7a75ffde289282804aae012bd1dcbef179adb78/eleven_towers_lib.tlv)
+   m4_include_lib(https://raw.githubusercontent.com/rweda/showdown-2026-eleven-towers/9c23c2081649f4b2f1b479f61a624a05bbb850d8/eleven_towers_lib.tlv)
 
    m5_makerchip_module
 \TLV
@@ -41,7 +41,12 @@
    m5_define_player(Weiyet,         Wei Yet Ng)   /// Weiyet
 
    // Instantiate the Eleven Towers game.
-   m5+eleven_towers_game(/top)
+   // We inline eleven_towers_logic (rather than m5+eleven_towers_game) so we can extend the simulation limit.
+   |game
+      @1
+         m5+eleven_towers_logic(|game)
+         *passed = $passed;
+         *failed = $failed;
 \SV
    endmodule
    // Declare Verilog modules for any enlisted teams that provide them (Verilog-based entries).
