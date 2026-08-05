@@ -151,11 +151,14 @@ Inconsiderate behavior will not be tolerated and may result in disqualification.
 <!-- LOCAL / UNCOMMITTED: preliminary simulation results (do not commit).   -->
 <!-- ===================================================================== -->
 
-## Preliminary Results (local sim, 2026-08-03)
+## Results
 
 Full compile/sim of the three tournament runs (`showdown_results_{2,3,4}team.tlv`, each 48 games
-over a reused 12-board grid, 4 rounds), all four enlisted teams:
-Sparks, Chronos TL, JustNothing, Wei Yet Ng.
+over a reused 12-board grid, 4 rounds, in SandStorm(TM) with extended compilation/simulation), all four enlisted teams:
+[Sparks](https://github.com/m-fajris/redwood-showdown-2026),
+[Chronos TL](https://github.com/Chronos-TL/Chronos_TL-VERILOG_Showdown),
+[JustNothing](https://github.com/JustNothingJay/JustNothing-eleven-towers),
+[Wei Yet Ng](https://github.com/Weiyet/showdown-2026-eleven-towers).
 
 **Overall winner: Wei Yet Ng** (first in every format; tied at 2-team).
 
@@ -163,22 +166,18 @@ Sparks, Chronos TL, JustNothing, Wei Yet Ng.
 
 | Rank | Team | Total |
 |---|---|---|
-| 1 | **Wei Yet Ng** | **261** |
-| 2 | Sparks | 219 |
-| 3 | JustNothing | 198 |
-| 4 | Chronos TL | 42 |
+| 1 | **[Wei Yet Ng](https://github.com/Weiyet/showdown-2026-eleven-towers)** | **261** |
+| 2 | [Sparks](https://github.com/m-fajris/redwood-showdown-2026) | 219 |
+| 3 | [JustNothing](https://github.com/JustNothingJay/JustNothing-eleven-towers) | 198 |
+| 4 | [Chronos TL](https://github.com/Chronos-TL/Chronos_TL-VERILOG_Showdown) | 42 |
 
 ### Per format
 
-| Team | 2-team (3 pts/win) | 3-team (5 pts/win) | 4-team (7 pts/win) | Total |
-|---|---|---|---|---|
-| Wei Yet Ng | 42 | **100** | **119** | **261** |
-| Sparks | 42 | 65 | 112 | 219 |
-| JustNothing | 42 | 65 | 91 | 198 |
-| Chronos TL | 18 | 10 | 14 | 42 |
-| _run total_ | _144_ | _240_ | _336_ | _720_ |
+| Team | 2-team (3 pts/win) | 3-team (5 pts/win) | 4-team (7 pts/win) |
+|---|---|---|---|
+| Wei Yet Ng | 42 | **100** | **119** |
+| Sparks | 42 | 65 | 112 |
+| JustNothing | 42 | 65 | 91 |
+| Chronos TL | 18 | 10 | 14 |
+| _run total_ | _144_ | _240_ | _336_ |
 
-**Incomplete games: none.** Every run's total equals `48 × points-per-win`
-(144 = 48×3, 240 = 48×5, 336 = 48×7), so all 48 games in each run ended with a sole winner —
-zero draws / cycle-limit timeouts. (The 4-team run finished all 4 rounds by cycle 876, well under
-the 400-cycle-per-game cap.)
